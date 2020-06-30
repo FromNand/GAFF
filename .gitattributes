@@ -1,0 +1,3 @@
+*.s linguist-language=Assembly
+*.ls linguist-language=Others
+Makefile linguist-language=Others
