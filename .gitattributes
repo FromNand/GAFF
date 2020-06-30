@@ -1,3 +1,5 @@
+*.h linguist-language=C
 *.s linguist-language=Assembly
 *.ls linguist-language=Others
-Makefile linguist-language=Others
+Makefile linguist-vendored=false
+.gdbinit linguist-vendored=false
