@@ -30,7 +30,8 @@ ASMOBJ=$(OBJ)/asmfunc.o  $(OBJ)/string.o $(OBJ)/srch_regs.o
 COBJ=$(OBJ)/main.o $(OBJ)/graphic.o  $(OBJ)/mouse.o $(OBJ)/sprintf.o $(OBJ)/hankaku.o $(OBJ)/descriptor.o $(OBJ)/int.o $(OBJ)/fifo.o $(OBJ)/kbc.o $(OBJ)/memtest.o $(OBJ)/memman.o $(OBJ)/debug.o
 ALLOBJ=$(COBJ) $(ASMOBJ)
 
-
+# I don't want to display any command message
+#.SILENT:
 
 ########################################
 ########## how to create file ##########
@@ -103,12 +104,15 @@ run: $(IMG)
 	@qemu-system-i386     -L . -m 100 -localtime -vga std -drive file=$?,format=raw		# 386環境でエミュレート(なぜか警告が出ない)
 	@#@qemu-system-i386   -L . -m 100 -localtime -vga std -fda $?				# FDDから起動
 	@#@qemu-system-i386   -L . -m 100 -localtime -vga std -hda $?				# HDDから起動
-	@#@qemu-system-i386   -L . -m 100 -localtime -vga std -cdrom $?				# CDROMから起動
 	@#@qemu-system-x86_64 -L . -m 100 -localtime -vga std -drive file=$?,format=raw		# x64環境でエミュレートしている？
 
 # show mapfile
 map: $(MAP)
 	@cat $(MAP) | less
+
+# disass ipl
+ipl: $(IPL)
+	@objdump -D -b binary -mi386 -Maddr16, data16 $? | less
 
 # debug OS
 # I explain primary command. (In detail http://www.ne.jp/asahi/it/life/it/kvm/qemu/qemu_tips.html)
