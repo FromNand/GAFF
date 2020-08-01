@@ -1,0 +1,10 @@
+# オブジェクトファイル
+obj/*.o
+obj/*.bin
+obj/*.sys
+
+# マップファイル
+GAFF.map
+
+# ツールの実行形式
+tools/fontmaker/fm
