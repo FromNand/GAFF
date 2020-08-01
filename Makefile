@@ -31,7 +31,7 @@ COBJ=$(OBJ)/main.o $(OBJ)/graphic.o  $(OBJ)/mouse.o $(OBJ)/sprintf.o $(OBJ)/hank
 ALLOBJ=$(COBJ) $(ASMOBJ)
 
 # I don't want to display any command message
-#.SILENT:
+.SILENT:
 
 ########################################
 ########## how to create file ##########
@@ -39,38 +39,42 @@ ALLOBJ=$(COBJ) $(ASMOBJ)
 
 # ipl.s
 $(IPL): $(ASM)/ipl.s
-	@gcc -nostdlib -T$(LS)/ipl.ls $? -o $@
+	gcc -nostdlib -T$(LS)/ipl.ls $? -o $@
 
 # head.s
 $(OBJ)/head.bin: $(ASM)/head.s
-	@gcc -nostdlib -T$(LS)/head.ls $? -o $@
+	gcc -nostdlib -T$(LS)/head.ls $? -o $@
+
+# fontmaker
+$(TOOLS)/fontmaker/fm: $(TOOLS)/fontmaker/fontmaker.c
+	gcc $? -o $@
 
 # fonts
-$(C)/hankaku.c: $(FONTS)/hankaku.txt
-	@$(TOOLS)/fontmaker/fm $? $@
+$(C)/hankaku.c: $(TOOLS)/fontmaker/fm $(FONTS)/hankaku.txt
+	$(TOOLS)/fontmaker/fm $(FONTS)/hankaku.txt $@
 
 # suffix about .c
 $(OBJ)/%.o: $(C)/%.c
-	@gcc $(GCC-OP) $< -c -o $@
+	gcc $(GCC-OP) $< -c -o $@
 
 # suffix about .s
 $(OBJ)/%.o: $(ASM)/%.s
-	@as --32 $< -o $@
+	as --32 $< -o $@
 
 # all obj
 $(OBJ)/allcobj.bin: $(ALLOBJ)
-	@ld -m elf_i386 -T$(LS)/os.ls -Map=GAFF.map $? -o $@
+	ld -m elf_i386 -T$(LS)/os.ls -Map=GAFF.map $? -o $@
 
 # head.s + all obj
 $(SYS): $(OBJ)/head.bin $(OBJ)/allcobj.bin
-	@cat $? > $@
+	cat $? > $@
 
 # img
 $(IMG): $(SYS) $(IPL)
-	@dd if=$(IPL) of=$@
-	@dd seek=1 if=$(SYS) of=$@
-#	@mformat -f 1440 -C -B $(IPL) -i $@ ::
-#	@mcopy -i $@ $(SYS) ::
+	dd if=$(IPL) of=$@
+	dd seek=1 if=$(SYS) of=$@
+#	mformat -f 1440 -C -B $(IPL) -i $@ ::
+#	mcopy -i $@ $(SYS) ::
 
 # only make img
 img: $(IMG)
@@ -83,8 +87,8 @@ img: $(IMG)
 
 # write GAFF.img to /dev/sdb
 burn: $(IMG)
-	@sudo dd count=1088 if=/dev/zero of=/dev/sdb						# USBの先頭セクタから、1088=0x440(iplでusbからメモリにロードするデータサイズ÷512)分のデータを削除
-	@sudo dd if=$? of=/dev/sdb								# USBにイメージファイルを書き込む
+	sudo dd count=1088 if=/dev/zero of=/dev/sdb						# USBの先頭セクタから、1088=0x440(iplでusbからメモリにロードするデータサイズ÷512)分のデータを削除
+	sudo dd if=$? of=/dev/sdb								# USBにイメージファイルを書き込む
 
 # emulate on qemu
 # I explain primary command. (In detail http://www.ne.jp/asahi/it/life/it/kvm/qemu/qemu_tips.html)
@@ -101,18 +105,18 @@ burn: $(IMG)
 # -hda          : boot from HDD.
 # -cdrom        : boot from CDROM. (or DVD)
 run: $(IMG)
-	@qemu-system-i386     -L . -m 100 -localtime -vga std -drive file=$?,format=raw		# 386環境でエミュレート(なぜか警告が出ない)
-	@#@qemu-system-i386   -L . -m 100 -localtime -vga std -fda $?				# FDDから起動
-	@#@qemu-system-i386   -L . -m 100 -localtime -vga std -hda $?				# HDDから起動
-	@#@qemu-system-x86_64 -L . -m 100 -localtime -vga std -drive file=$?,format=raw		# x64環境でエミュレートしている？
+	#qemu-system-i386     -L . -m 100 -localtime -vga std -drive file=$?,format=raw		# 386環境でエミュレート(なぜか警告が出ない)
+	#qemu-system-i386   -L . -m 100 -localtime -vga std -fda $?				# FDDから起動
+	#qemu-system-i386   -L . -m 100 -localtime -vga std -hda $?				# HDDから起動
+	qemu-system-x86_64 -L . -m 100 -localtime -vga std -drive file=$?,format=raw		# x64環境でエミュレートしている？
 
 # show mapfile
 map: $(MAP)
-	@cat $(MAP) | less
+	cat $(MAP) | less
 
 # disass ipl
 ipl: $(IPL)
-	@objdump -D -b binary -mi386 -Maddr16, data16 $? | less
+	objdump -D -b binary -mi386 -Maddr16, data16 $? | less
 
 # debug OS
 # I explain primary command. (In detail http://www.ne.jp/asahi/it/life/it/kvm/qemu/qemu_tips.html)
@@ -120,8 +124,8 @@ ipl: $(IPL)
 # if we use -g option to gcc, we can add some infomation about source code to object file. and debugger(gdb) can use them.
 # but this OS isn't compatible with -g option. so we can't use it. sorry.
 debug: $(IMG)
-	@qemu-system-i386 -S -s -m 32 -localtime -drive file=$?,format=raw &
-	@gdb -q \
+	qemu-system-i386 -S -s -m 32 -localtime -drive file=$?,format=raw &
+	gdb -q \
 	-ex 'target remote localhost:1234' \
 	-ex 'set architecture i8086' \
 	-ex 'set tdesc filename target.xml' \
@@ -134,10 +138,10 @@ debug: $(IMG)
 # we can use qemu monitor without '-monitor stdio' by pushing 'ctrl + alt + 2' on qemu guest OS window.
 # 'ctrl + alt + 1' : guest OS, 'ctrl + alt + 2' : qemu monitor, 'ctrl + alt + 3' : serial console, 'ctrl + alt + 4' : parallel console, 'ctrl + alt + f' : full screen
 monitor: $(IMG)
-	@qemu-system-i386 -L . -m 32 -localtime -monitor stdio -vga std -drive file=$?,format=raw
+	qemu-system-i386 -L . -m 32 -localtime -monitor stdio -vga std -drive file=$?,format=raw
 
 # delete all binary file
 clean:
-	@rm -f $(OBJ)/*
-	@rm -f $(MAP)
-	@rm -f $(IMG)
+	rm -f $(OBJ)/*
+	rm -f $(MAP)
+	rm -f $(IMG)
